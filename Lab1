@@ -1,0 +1,73 @@
+/**** Incluimos las librerías necesarias ****/
+#include <ESP8266WiFi.h>
+#include <DHT.h>
+
+const char* ssid = "Cuelguesele a esta";
+const char* password = "Duqueza2102+%";
+
+const char* host = "192.168.2.100"; //localhost IP de tu PC
+
+/*** Definiendo el modelo de sensor y el pin al que estará conectado ***/
+#define DHTTYPE DHT11
+#define DHTPIN  2 // GPIO2
+DHT dht(DHTPIN, DHTTYPE, 11);
+
+/*** Variables para Humedad y Temperatura ****/
+float temperatura;
+float humedad;
+
+void setup()
+{
+  Serial.begin(115200);
+  Serial.println();
+
+  dht.begin();
+
+  Serial.printf("Connecting to %s ", ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println(" connected");
+}
+
+void loop()
+{
+  WiFiClient client;
+
+  Serial.printf("\n[Connecting to %s ... ", host);
+  if (client.connect(host, 80))
+  {
+    Serial.println("connected]");
+
+    temperatura = dht.readTemperature();
+    humedad = dht.readHumidity();
+
+    Serial.println("[Sending a request]");
+    client.print(String("GET /esp8266/ejemplo4/?Temp=") + temperatura + "&Hum=" + humedad + " HTTP/1.1\r\n" +
+                 "Host: " + host + "\r\n" +
+                 "Connection: close\r\n" +
+                 "\r\n"
+                );
+
+    Serial.println("[Response:]");
+    while (client.connected())
+    {
+      if (client.available())
+      {
+        String line = client.readStringUntil('\n');
+        Serial.println(line);
+      }
+    }
+    client.stop();
+    Serial.println("\n[Disconnected]");
+  }
+  else
+  {
+    Serial.println("connection failed!]");
+    client.stop();
+  }
+  delay(5000);
+}
